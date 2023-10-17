@@ -25,7 +25,7 @@ SCRIPT
 $install_jenkins = <<SCRIPT
 sudo docker network create jenkins
 
-sudo wdocker run \
+sudo docker run \
   --name jenkins-docker \
   --rm \
   --detach \
