@@ -1,9 +1,25 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+
+# Variables 
+
+# Note that i only tested this in ubuntu/bionic64
 $box_image = "ubuntu/bionic64"
+$user = "vagrant"
+
 $install_docker = <<SCRIPT
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
+SCRIPT
+
+$config_docker = <<SCRIPT
+sudo useradd -m #{$user} -s /bin/bash 
+sudo groupadd docker
+sudo usermod -aG docker #{$user}
+newgrp docker
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+sudo reboot
 SCRIPT
 
 #DOCKER SETUP
@@ -68,6 +84,7 @@ Vagrant.configure("2") do |config|
     config.vm.provision "shell", inline: <<-SHELL
         #{$install_docker}
         #{$install_jenkins}
+        #{$config_docker}
         #{$launch_monitoring}
     SHELL
 end    
