@@ -19,7 +19,6 @@ sudo usermod -aG docker #{$user}
 newgrp docker
 sudo systemctl enable docker.service
 sudo systemctl enable containerd.service
-sudo reboot
 SCRIPT
 
 #DOCKER SETUP
