@@ -2,22 +2,52 @@
 # vi: set ft=ruby :
 $box_image = "ubuntu/bionic64"
 $install_docker = <<SCRIPT
-sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg -y
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 SCRIPT
+
+#DOCKER SETUP
+$install_jenkins = <<SCRIPT
+sudo docker network create jenkins
+
+sudo wdocker run \
+  --name jenkins-docker \
+  --rm \
+  --detach \
+  --privileged \
+  --network jenkins \
+  --network-alias docker \
+  --env DOCKER_TLS_CERTDIR=/certs \
+  --volume jenkins-docker-certs:/certs/client \
+  --volume jenkins-data:/var/jenkins_home \
+  --publish 2376:2376 \
+  docker:dind \
+  --storage-driver overlay2
+SCRIPT
+
+
+# NO DOCKER SETUP
+
+# $install_jenkins = <<SCRIPT
+# sudo apt update
+# sudo apt install openjdk-11-jdk -y
+# sudo apt install maven -y
+# curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+# /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+  
+# echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+# https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+# /etc/apt/sources.list.d/jenkins.list > /dev/null
+ 
+# sudo apt-get update
+# sudo apt-get install fontconfig openjdk-11-jre
+# sudo apt-get install jenkins
+# SCRIPT
+
 $launch_monitoring = <<SCRIPT
   git clone https://github.com/cristianpb/telegraf-influxdb-grafana-docker.git
   cd telegraf-influxdb-grafana-docker
-  make up
+  sudo docker compose up
 SCRIPT
 
 Vagrant.configure("2") do |config|
@@ -27,6 +57,7 @@ Vagrant.configure("2") do |config|
       v.memory = 2048
       v.cpus = 2
     end
+    config.vm.network "forwarded_port", :guest => 8080, :host => 8080
     config.vm.network "forwarded_port", :guest => 8083, :host => 8083
     config.vm.network "forwarded_port", :guest => 8086, :host => 8086
     config.vm.network "forwarded_port", :guest => 8090, :host => 8090
@@ -36,6 +67,7 @@ Vagrant.configure("2") do |config|
     
     config.vm.provision "shell", inline: <<-SHELL
         #{$install_docker}
+        #{$install_jenkins}
         #{$launch_monitoring}
     SHELL
 end    
